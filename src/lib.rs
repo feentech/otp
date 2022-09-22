@@ -32,11 +32,24 @@ pub struct Totp {
 }
 
 /// possible errors returned by ```now``` and ```verify```
+#[derive(Debug)]
 pub enum OtpError {
     Time(SystemTimeError),
     Decode(DecodeError),
     Encode(TryFromSliceError),
 }
+
+impl std::fmt::Display for OtpError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OtpError::Time(t) => write!(f, "{}", t),
+            OtpError::Decode(d) => write!(f, "{}", d),
+            OtpError::Encode(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl std::error::Error for OtpError {}
 
 impl Totp {
     /// create a new ```Totp``` struct
@@ -48,9 +61,8 @@ impl Totp {
         }
     }
 
-    /// get the current TOTP
-    pub fn now(&self) -> Result<u32, OtpError> {
-        let now = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+    fn generate(&self, time: SystemTime) -> Result<u32, OtpError> {
+        let now = match time.duration_since(SystemTime::UNIX_EPOCH) {
             Ok(t) => t.as_secs(),
             Err(e) => return Err(OtpError::Time(e)),
         };
@@ -68,6 +80,16 @@ impl Totp {
         };
 
         Ok(totp)
+    }
+
+    /// get the TOTP at the current time
+    pub fn now(&self) -> Result<u32, OtpError> {
+        self.generate(SystemTime::now())
+    }
+
+    /// get the TOTP at the provided time
+    pub fn at(&self, time: SystemTime) -> Result<u32, OtpError> {
+        self.generate(time)
     }
 
     /// check that the provided TOTP is correct
