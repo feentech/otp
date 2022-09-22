@@ -6,7 +6,7 @@ I did was make the code more ergonomic for my own use.
 
 In your Cargo.toml file add otp as a dependency
 ```
-otp = { git = "https://github.com/kiernfeeney/otp", branch = "master" }
+otp = { git = "https://github.com/feentech/otp", branch = "master" }
 ```
 
 Then you can start using the library in your project
