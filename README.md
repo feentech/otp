@@ -13,6 +13,10 @@ Then you can start using the library in your project
 ```
   let totp = otp::Totp::new("JBSWY3DPEHPK3PXP", 30, 0);
   
+  // print the totp value at a custom time
+  let time = std::time::SystemTime::now();
+  println!("{}", totp.at(time).unwrap());
+  
   // print the current totp value
   println!("{}", totp.now().unwrap());
   
