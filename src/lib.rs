@@ -24,12 +24,14 @@ fn encode_digest(digest: &[u8]) -> Result<u32, TryFromSliceError> {
     Ok((code & 0x7fffffff) % 1_000_000)
 }
 
+/// represent the TOTP
 pub struct Totp {
     secret: String,
     time_step: u64,
     skew: i64,
 }
 
+/// possible errors returned by ```now``` and ```verify```
 pub enum OtpError {
     Time(SystemTimeError),
     Decode(DecodeError),
@@ -37,6 +39,7 @@ pub enum OtpError {
 }
 
 impl Totp {
+    /// create a new ```Totp``` struct
     pub fn new(secret: String, time_step: u64, skew: i64) -> Self {
         Totp {
             secret,
@@ -45,6 +48,7 @@ impl Totp {
         }
     }
 
+    /// get the current TOTP
     pub fn now(&self) -> Result<u32, OtpError> {
         let now = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
             Ok(t) => t.as_secs(),
@@ -66,6 +70,7 @@ impl Totp {
         Ok(totp)
     }
 
+    /// check that the provided TOTP is correct
     pub fn verify(&self, totp_0: u32) -> Result<bool, OtpError> {
         match self.now() {
             Ok(totp_1) => Ok(totp_0 == totp_1),
