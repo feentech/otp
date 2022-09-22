@@ -35,7 +35,7 @@ impl Totp {
         }
     }
 
-    pub fn generate(&self) -> u32 {
+    pub fn now(&self) -> u32 {
         let now = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
