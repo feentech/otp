@@ -1,10 +1,10 @@
-use data_encoding::BASE32_NOPAD;
+use data_encoding::{DecodeError, BASE32_NOPAD};
 use ring::hmac;
-use std::time::SystemTime;
+use std::array::TryFromSliceError;
+use std::{time::SystemTime, time::SystemTimeError};
 
-fn decode_secret(secret: &str) -> Vec<u8> {
-    let secret = secret.as_bytes();
-    BASE32_NOPAD.decode(secret).unwrap()
+fn decode_secret(secret: &str) -> Result<Vec<u8>, DecodeError> {
+    BASE32_NOPAD.decode(secret.as_bytes())
 }
 
 fn calc_digest(secret: &[u8], counter: u64) -> hmac::Tag {
@@ -12,12 +12,15 @@ fn calc_digest(secret: &[u8], counter: u64) -> hmac::Tag {
     hmac::sign(&key, &counter.to_be_bytes())
 }
 
-fn encode_digest(digest: &[u8]) -> u32 {
+fn encode_digest(digest: &[u8]) -> Result<u32, OtpError> {
     let offset = (digest.last().unwrap() & 0xf) as usize;
-    let code_bytes: [u8; 4] = digest[offset..offset + 4].try_into().unwrap();
-    let code = u32::from_be_bytes(code_bytes);
+    let code_bytes: [u8; 4] = match digest[offset..offset + 4].try_into() {
+        Ok(bytes) => bytes,
+        Err(e) => return Err(OtpError::Encode(e)),
+    };
 
-    (code & 0x7fffffff) % 1_000_000
+    let code = u32::from_be_bytes(code_bytes);
+    Ok((code & 0x7fffffff) % 1_000_000)
 }
 
 pub struct Totp {
@@ -26,24 +29,38 @@ pub struct Totp {
     skew: i64,
 }
 
+pub enum OtpError {
+    Time(SystemTimeError),
+    Decode(DecodeError),
+    Encode(TryFromSliceError),
+}
+
 impl Totp {
-    pub fn new(secret: &str, time_step: u64, skew: i64) -> Self {
+    pub fn new(secret: String, time_step: u64, skew: i64) -> Self {
         Totp {
-            secret: secret.to_string(),
+            secret,
             time_step,
             skew,
         }
     }
 
-    pub fn now(&self) -> u32 {
-        let now = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        let counter = ((now as i64 + self.skew) as u64) / self.time_step;
+    pub fn now(&self) -> Result<u32, OtpError> {
+        let now = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+            Ok(t) => t.as_secs(),
+            Err(e) => return Err(OtpError::Time(e)),
+        };
 
-        // generate HOTP with time based counter...
-        let decoded = decode_secret(&self.secret[..]);
-        encode_digest(calc_digest(decoded.as_slice(), counter).as_ref())
+        let counter = ((now as i64 + self.skew) as u64) / self.time_step;
+        let decoded = match decode_secret(&self.secret) {
+            Ok(d) => d,
+            Err(e) => return Err(OtpError::Decode(e)),
+        };
+
+        let totp = match encode_digest(calc_digest(decoded.as_slice(), counter).as_ref()) {
+            Ok(totp) => totp,
+            Err(e) => return Err(e),
+        };
+
+        Ok(totp)
     }
 }
