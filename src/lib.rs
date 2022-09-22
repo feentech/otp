@@ -57,7 +57,8 @@ impl Totp {
             Err(e) => return Err(OtpError::Decode(e)),
         };
 
-        let totp = match encode_digest(calc_digest(decoded.as_slice(), counter).as_ref()) {
+        let digest = calc_digest(decoded.as_slice(), counter);
+        let totp = match encode_digest(digest.as_ref()) {
             Ok(totp) => totp,
             Err(e) => return Err(e),
         };
