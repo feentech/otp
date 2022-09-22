@@ -12,6 +12,7 @@ fn calc_digest(secret: &[u8], counter: u64) -> hmac::Tag {
     hmac::sign(&key, &counter.to_be_bytes())
 }
 
+/// this will panic if the digest provided is empty
 fn encode_digest(digest: &[u8]) -> Result<u32, OtpError> {
     let offset = (digest.last().unwrap() & 0xf) as usize;
     let code_bytes: [u8; 4] = match digest[offset..offset + 4].try_into() {
@@ -62,5 +63,12 @@ impl Totp {
         };
 
         Ok(totp)
+    }
+
+    pub fn verify(&self, totp_0: u32) -> Result<bool, OtpError> {
+        match self.now() {
+            Ok(totp_1) => Ok(totp_0 == totp_1),
+            Err(e) => Err(e),
+        }
     }
 }
