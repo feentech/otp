@@ -13,11 +13,11 @@ fn calc_digest(secret: &[u8], counter: u64) -> hmac::Tag {
 }
 
 /// this will panic if the digest provided is empty
-fn encode_digest(digest: &[u8]) -> Result<u32, OtpError> {
+fn encode_digest(digest: &[u8]) -> Result<u32, TryFromSliceError> {
     let offset = (digest.last().unwrap() & 0xf) as usize;
     let code_bytes: [u8; 4] = match digest[offset..offset + 4].try_into() {
         Ok(bytes) => bytes,
-        Err(e) => return Err(OtpError::Encode(e)),
+        Err(e) => return Err(e),
     };
 
     let code = u32::from_be_bytes(code_bytes);
@@ -60,7 +60,7 @@ impl Totp {
         let digest = calc_digest(decoded.as_slice(), counter);
         let totp = match encode_digest(digest.as_ref()) {
             Ok(totp) => totp,
-            Err(e) => return Err(e),
+            Err(e) => return Err(OtpError::Encode(e)),
         };
 
         Ok(totp)
