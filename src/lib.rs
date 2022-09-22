@@ -61,7 +61,8 @@ impl Totp {
         }
     }
 
-    fn generate(&self, time: SystemTime) -> Result<u32, OtpError> {
+    /// get the TOTP at the provided time
+    pub fn at(&self, time: SystemTime) -> Result<u32, OtpError> {
         let now = match time.duration_since(SystemTime::UNIX_EPOCH) {
             Ok(t) => t.as_secs(),
             Err(e) => return Err(OtpError::Time(e)),
@@ -84,12 +85,7 @@ impl Totp {
 
     /// get the TOTP at the current time
     pub fn now(&self) -> Result<u32, OtpError> {
-        self.generate(SystemTime::now())
-    }
-
-    /// get the TOTP at the provided time
-    pub fn at(&self, time: SystemTime) -> Result<u32, OtpError> {
-        self.generate(time)
+        self.at(SystemTime::now())
     }
 
     /// check that the provided TOTP is correct
